@@ -1,8 +1,12 @@
-import streamlit as st
-import requests
+import os
 import json
+import requests
+import streamlit as st
 
 st.title("Ollama Local Chat")
+
+# Dynamic base URL: Uses environment variable if set on Render, else defaults to local
+OLLAMA_HOST = os.getenv("OLLAMA_URL", "http://localhost:11434")
 
 # Initialize chat history to persist across reruns
 if "messages" not in st.session_state:
@@ -21,12 +25,10 @@ if prompt := st.chat_input("Message Ollama..."):
 
     # Display assistant response
     with st.chat_message("assistant"):
-        
-        # ADDED: The spinner context manager provides the loading UI
         with st.spinner("Thinking..."):
             
             def generate_response():
-                url = "http://localhost:11434/api/chat"
+                url = f"{OLLAMA_HOST}/api/chat"
                 payload = {
                     "model": "llama3.2:1b",
                     "messages": st.session_state.messages,
@@ -40,10 +42,8 @@ if prompt := st.chat_input("Message Ollama..."):
                             chunk = json.loads(line.decode("utf-8"))
                             yield chunk.get("message", {}).get("content", "")
                 except requests.exceptions.RequestException as e:
-                    yield f"**Error connecting to Ollama:** {str(e)}"
+                    yield f"**Error connecting to Ollama ({OLLAMA_HOST}):** {str(e)}"
 
-            # The spinner will spin while establishing the connection, 
-            # and write_stream handles the text rendering automatically
             full_response = st.write_stream(generate_response())
         
     # Save the assistant's complete response to history
